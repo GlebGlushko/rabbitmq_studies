@@ -1,7 +1,7 @@
 ﻿using System;
 using RabbitMQ.Client;
 using System.Text;
-
+using System.Linq;
 class EmitLog
 {
     public static void Main(string[] args)
@@ -10,21 +10,21 @@ class EmitLog
         using (var connection = factory.CreateConnection())
         using (var channel = connection.CreateModel())
         {
-            channel.ExchangeDeclare(exchange: "direct_logs", ExchangeType.Direct);
+            channel.ExchangeDeclare(exchange: "topic_logs", type: ExchangeType.Topic);
             var queueName = channel.QueueDeclare().QueueName;
 
 
-            var message = GetMessage(args);
+            var message = (args.Length > 1 ? string.Join(" ", args.Skip(1).ToArray()) : "Hello world!");
             var body = Encoding.UTF8.GetBytes(message);
 
             var properties = channel.CreateBasicProperties();
             properties.Persistent = true;
-            var severity = "critical";
-            channel.BasicPublish(exchange: "direct_logs",
+            var severity = args.Length > 0 ? args[0] : "anonymous.info";
+            channel.BasicPublish(exchange: "topic_logs",
                                  routingKey: severity,
                                  basicProperties: properties,
                                  body: body);
-            Console.WriteLine(" [x] Sent {0}", message);
+            Console.WriteLine(" [x] Sent {0}:{1}", severity, message);
         }
 
         Console.WriteLine(" Press [enter] to exit.");

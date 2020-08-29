@@ -15,25 +15,25 @@ namespace ReceiveLogs
             {
                 using (var channel = connection.CreateModel())
                 {
-                    channel.ExchangeDeclare(exchange: "direct_logs", type: ExchangeType.Direct);
+                    channel.ExchangeDeclare(exchange: "topic_logs", type: ExchangeType.Topic);
                     var queueName = channel.QueueDeclare().QueueName;
+                    foreach (var key in args)
+                    {
+                        channel.QueueBind(
+                            queue: queueName,
+                            exchange: "topic_logs",
+                            routingKey: key
+                        );
+                    }
 
-                    channel.QueueBind(
-                        queue: queueName,
-                        exchange: "direct_logs",
-                        routingKey: "critical"
-                    );
 
                     var consumer = new EventingBasicConsumer(channel);
                     consumer.Received += (model, ea) =>
                     {
                         var body = ea.Body.ToArray();
                         var message = Encoding.UTF8.GetString(body);
-                        Console.WriteLine("[x] Received {0}", message);
-                        int dots = message.Split('.').Length - 1;
-                        Thread.Sleep(dots * 1000);
-
-                        Console.WriteLine("[x] Done");
+                        var key = ea.RoutingKey;
+                        Console.WriteLine("[x] Received {0}:{1}", key, message);
                         channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
                     };
 
